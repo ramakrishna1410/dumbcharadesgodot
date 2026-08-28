@@ -28,5 +28,10 @@ const MOVIES = [
 	}
 ]
 
-static func random_movie() -> Dictionary:
-	return MOVIES.pick_random()
+static func random_movie(exclude_title: String = "") -> Dictionary:
+	var candidates := MOVIES
+
+	if exclude_title != "":
+		candidates = MOVIES.filter(func(movie): return movie["title"] != exclude_title)
+
+	return candidates.pick_random()

@@ -149,7 +149,8 @@ func create_interface() -> void:
 	panel.add_child(reveal_button)
 
 func start_round() -> void:
-	secret_movie = MovieDeck.random_movie()
+	var previous_title := str(secret_movie.get("title", ""))
+	secret_movie = MovieDeck.random_movie(previous_title)
 	movie_actions = secret_movie["actions"]
 
 	sequence_index = 0
