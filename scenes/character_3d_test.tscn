@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://dn4jad4fyevvy"]
+
+[ext_resource type="Script" uid="uid://4ww45q3q143d" path="res://scripts/character_3d_test.gd" id="1_5jsix"]
+[ext_resource type="PackedScene" uid="uid://pyyri45f5r7p" path="res://scenes/blake_3d.tscn" id="2_5jsix"]
+
+[node name="Character3DTest" type="Node3D" unique_id=378462350]
+script = ExtResource("1_5jsix")
+
+[node name="Blake" parent="." unique_id=1050282605 instance=ExtResource("2_5jsix")]
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=961537927]
+transform = Transform3D(1, 0, 0, 0, 0.99026805, 0.1391731, 0, -0.1391731, 0.99026805, 0, 1.2, 2)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=266833739]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 0, 0)
