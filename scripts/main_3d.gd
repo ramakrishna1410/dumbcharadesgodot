@@ -3,7 +3,10 @@ extends Node3D
 @onready var animation_player: AnimationPlayer = $Blake/AnimationPlayer
 
 var movie_title_label: Label
+var category_label: Label
 var action_label: Label
+var hint_label: Label
+var hint_button: Button
 var timer_label: Label
 var score_label: Label
 var answer_input: LineEdit
@@ -18,6 +21,7 @@ var intro_time := 0.0
 var score := 0
 var round_running := false
 var round_answered := false
+var hints_revealed := 0
 
 var clip_map := {
 	"idle": "Idle",
@@ -99,6 +103,9 @@ func create_interface() -> void:
 	movie_title_label.add_theme_font_size_override("font_size", 22)
 	panel.add_child(movie_title_label)
 
+	category_label = Label.new()
+	panel.add_child(category_label)
+
 	timer_label = Label.new()
 	panel.add_child(timer_label)
 
@@ -106,6 +113,17 @@ func create_interface() -> void:
 	action_label.text = "Watch carefully!"
 	action_label.add_theme_font_size_override("font_size", 20)
 	panel.add_child(action_label)
+
+	hint_label = Label.new()
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint_label.custom_minimum_size = Vector2(320, 0)
+	panel.add_child(hint_label)
+
+	hint_button = Button.new()
+	hint_button.text = "Get a Hint"
+	hint_button.custom_minimum_size = Vector2(140, 42)
+	hint_button.pressed.connect(reveal_hint)
+	panel.add_child(hint_button)
 
 	answer_input = LineEdit.new()
 	answer_input.placeholder_text = "Type your movie answer"
@@ -140,9 +158,13 @@ func start_round() -> void:
 	intro_time = 1.5
 	round_running = true
 	round_answered = false
+	hints_revealed = 0
 
 	movie_title_label.text = "Movie: ???"
+	category_label.text = "Category: " + str(secret_movie["category"])
 	action_label.text = "Watch carefully, then type the movie title!"
+	hint_label.text = ""
+	hint_button.disabled = false
 	timer_label.text = "Get ready..."
 	score_label.text = "Score: " + str(score)
 	answer_input.clear()
@@ -163,13 +185,25 @@ func submit_answer() -> void:
 	var correct_answer := str(secret_movie["title"]).to_lower()
 
 	if player_answer == correct_answer:
-		score += 1
+		score += max(3 - hints_revealed, 1)
 		round_answered = true
 		action_label.text = "Correct!"
 		movie_title_label.text = "Movie: " + str(secret_movie["title"])
 		score_label.text = "Score: " + str(score)
 	else:
 		action_label.text = "Incorrect. Try again!"
+
+func reveal_hint() -> void:
+	var hints: Array = secret_movie["hints"]
+
+	if hints_revealed >= hints.size():
+		return
+
+	hint_label.text += ("\n" if hint_label.text != "" else "") + str(hints[hints_revealed])
+	hints_revealed += 1
+
+	if hints_revealed >= hints.size():
+		hint_button.disabled = true
 
 func reveal_answer() -> void:
 	round_running = false
