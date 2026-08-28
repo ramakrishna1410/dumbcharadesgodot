@@ -3,7 +3,6 @@ extends Node3D
 @onready var animation_player: AnimationPlayer = $Blake/AnimationPlayer
 
 var movie_title_label: Label
-var category_label: Label
 var action_label: Label
 var hint_label: Label
 var hint_button: Button
@@ -13,13 +12,19 @@ var answer_input: LineEdit
 var reveal_button: Button
 
 const ACTION_DURATION := 2.2
+const ACTION_BLEND_TIME := 0.15
 const MATCH_SIMILARITY_THRESHOLD := 0.9
+
+# These clips must always play start-to-finish uninterrupted so the jump reaches
+# its landing pose instead of getting cut off mid-air by ACTION_DURATION.
+const UNCAPPED_ACTIONS := ["jump_start", "jump", "jump_landing"]
 
 var secret_movie: Dictionary
 var movie_actions: Array
 var sequence_index := 0
 var action_elapsed := 0.0
-var time_left := 15.0
+var current_action_name := "idle"
+var time_left := 45.0
 var intro_time := 0.0
 var score := 0
 var round_running := false
@@ -80,9 +85,10 @@ func _process(delta: float) -> void:
 
 	# Cap how long any single clip (e.g. the long "Driving" clip) can hold the
 	# clue, so the action sequence keeps cycling at a steady, repetitive pace.
+	# The jump trio is exempt so it always plays through to a landed pose.
 	action_elapsed += delta
 
-	if action_elapsed >= ACTION_DURATION:
+	if action_elapsed >= ACTION_DURATION and not UNCAPPED_ACTIONS.has(current_action_name):
 		advance_action()
 
 	time_left -= delta
@@ -118,9 +124,6 @@ func create_interface() -> void:
 	movie_title_label.text = "Movie: ???"
 	movie_title_label.add_theme_font_size_override("font_size", 22)
 	panel.add_child(movie_title_label)
-
-	category_label = Label.new()
-	panel.add_child(category_label)
 
 	timer_label = Label.new()
 	panel.add_child(timer_label)
@@ -171,14 +174,13 @@ func start_round() -> void:
 
 	sequence_index = 0
 	action_elapsed = 0.0
-	time_left = 15.0
+	time_left = 45.0
 	intro_time = 1.5
 	round_running = true
 	round_answered = false
 	hints_revealed = 0
 
 	movie_title_label.text = "Movie: ???"
-	category_label.text = "Category: " + str(secret_movie["category"])
 	action_label.text = "Watch carefully, then type the movie title!"
 	hint_label.text = ""
 	hint_button.disabled = false
@@ -200,7 +202,7 @@ func submit_answer() -> void:
 		or text_similarity(player_answer, correct_answer) >= MATCH_SIMILARITY_THRESHOLD
 
 	if is_match:
-		score += max(3 - hints_revealed, 1)
+		score += max(4 - hints_revealed, 1)
 		round_answered = true
 		round_running = false
 		action_label.text = "Correct!"
@@ -291,6 +293,7 @@ func reveal_answer() -> void:
 func play_action(action_name: String) -> void:
 	var clip_name: String = clip_map.get(action_name, "Idle")
 	action_elapsed = 0.0
+	current_action_name = action_name
 
 	if animation_player.has_animation(clip_name):
-		animation_player.play(clip_name)
+		animation_player.play(clip_name, ACTION_BLEND_TIME)
