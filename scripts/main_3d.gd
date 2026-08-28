@@ -12,6 +12,9 @@ var score_label: Label
 var answer_input: LineEdit
 var reveal_button: Button
 
+const ACTION_DURATION := 2.2
+const MATCH_SIMILARITY_THRESHOLD := 0.9
+
 var secret_movie: Dictionary
 var movie_actions: Array
 var sequence_index := 0
@@ -52,6 +55,9 @@ func _on_animation_finished(animation_name: StringName) -> void:
 	if animation_name == "Idle":
 		return
 
+	advance_action()
+
+func advance_action() -> void:
 	sequence_index += 1
 
 	if sequence_index >= movie_actions.size():
@@ -72,14 +78,24 @@ func _process(delta: float) -> void:
 
 		return
 
+	# Cap how long any single clip (e.g. the long "Driving" clip) can hold the
+	# clue, so the action sequence keeps cycling at a steady, repetitive pace.
+	action_elapsed += delta
+
+	if action_elapsed >= ACTION_DURATION:
+		advance_action()
+
 	time_left -= delta
 	timer_label.text = "Time: " + str(ceil(time_left))
 
-	if time_left <= 0.0:
+	if time_left <= 0.0 and not round_answered:
+		round_answered = true
 		round_running = false
 		timer_label.text = "Time's up!"
-		action_label.text = "Type your answer, then submit it."
-		reveal_button.disabled = false
+		movie_title_label.text = "Movie: " + str(secret_movie["title"])
+		action_label.text = "Time's up! The answer was " + str(secret_movie["title"]) + "."
+		reveal_button.disabled = true
+		finish_round(2.5)
 func create_interface() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -169,30 +185,86 @@ func start_round() -> void:
 	timer_label.text = "Get ready..."
 	score_label.text = "Score: " + str(score)
 	answer_input.clear()
-	reveal_button.disabled = true
+	reveal_button.disabled = false
 
 	# Always reset the character before the clue starts.
 	play_action("idle")
 
 func submit_answer() -> void:
-	if round_running:
-		action_label.text = "Wait until the round finishes."
-		return
-
 	if round_answered:
 		return
 
-	var player_answer := answer_input.text.strip_edges().to_lower()
-	var correct_answer := str(secret_movie["title"]).to_lower()
+	var player_answer := normalize_for_match(answer_input.text)
+	var correct_answer := normalize_for_match(str(secret_movie["title"]))
+	var is_match := player_answer == correct_answer \
+		or text_similarity(player_answer, correct_answer) >= MATCH_SIMILARITY_THRESHOLD
 
-	if player_answer == correct_answer:
+	if is_match:
 		score += max(3 - hints_revealed, 1)
 		round_answered = true
+		round_running = false
 		action_label.text = "Correct!"
 		movie_title_label.text = "Movie: " + str(secret_movie["title"])
 		score_label.text = "Score: " + str(score)
+		reveal_button.disabled = true
+		finish_round(2.0)
 	else:
 		action_label.text = "Incorrect. Try again!"
+
+# Lowercases, strips punctuation that's hard to type correctly (e.g. the colon
+# in "Mad Max: Fury Road"), and collapses whitespace so answers can be compared
+# on their words alone.
+func normalize_for_match(text: String) -> String:
+	var normalized := text.strip_edges().to_lower()
+
+	for punctuation_char in [":", ",", ".", "'", "-", "!", "?"]:
+		normalized = normalized.replace(punctuation_char, "")
+
+	while normalized.find("  ") != -1:
+		normalized = normalized.replace("  ", " ")
+
+	return normalized.strip_edges()
+
+# Levenshtein-distance similarity ratio in [0, 1], used to forgive small typos.
+func text_similarity(a: String, b: String) -> float:
+	var len_a := a.length()
+	var len_b := b.length()
+
+	if len_a == 0 and len_b == 0:
+		return 1.0
+
+	if len_a == 0 or len_b == 0:
+		return 0.0
+
+	var previous_row: Array[int] = []
+	previous_row.resize(len_b + 1)
+
+	for j in range(len_b + 1):
+		previous_row[j] = j
+
+	for i in range(1, len_a + 1):
+		var current_row: Array[int] = []
+		current_row.resize(len_b + 1)
+		current_row[0] = i
+
+		for j in range(1, len_b + 1):
+			var substitution_cost := 0 if a[i - 1] == b[j - 1] else 1
+			current_row[j] = min(
+				previous_row[j] + 1,
+				current_row[j - 1] + 1,
+				previous_row[j - 1] + substitution_cost
+			)
+
+		previous_row = current_row
+
+	var distance: int = previous_row[len_b]
+	return 1.0 - float(distance) / float(max(len_a, len_b))
+
+# Waits, then starts the next round automatically.
+func finish_round(delay_seconds: float) -> void:
+	round_running = false
+	await get_tree().create_timer(delay_seconds).timeout
+	start_round()
 
 func reveal_hint() -> void:
 	var hints: Array = secret_movie["hints"]
@@ -207,13 +279,18 @@ func reveal_hint() -> void:
 		hint_button.disabled = true
 
 func reveal_answer() -> void:
-	round_running = false
+	if round_answered:
+		return
+
 	round_answered = true
 	movie_title_label.text = "Movie: " + str(secret_movie["title"])
 	action_label.text = "Answer revealed!"
+	reveal_button.disabled = true
+	finish_round(2.0)
 
 func play_action(action_name: String) -> void:
 	var clip_name: String = clip_map.get(action_name, "Idle")
+	action_elapsed = 0.0
 
 	if animation_player.has_animation(clip_name):
 		animation_player.play(clip_name)
