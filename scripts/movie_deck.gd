@@ -25,7 +25,7 @@ const MOVIES = [
 	{
 		"title": "Speed",
 		"hints": ["Category: Action Thriller", "A 1994 film where a city bus can't slow down below 50 mph.", "A cop must keep the speed up or a bomb on board will explode."],
-		"actions": ["drive", "run", "jump_start", "jump", "jump_landing", "drive"]
+		"actions": ["drive", "run", "drive", "run", "drive"]
 	},
 	{
 		"title": "Saturday Night Fever",
