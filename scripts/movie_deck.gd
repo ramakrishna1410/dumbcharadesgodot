@@ -15,7 +15,7 @@ const MOVIES = [
 	{
 		"title": "Mad Max: Fury Road",
 		"hints": ["Category: Post-Apocalyptic Action", "A 2015 film set in a desert wasteland after civilization's collapse.", "Most of the movie is one long car chase across the desert."],
-		"actions": ["drive", "run", "attack", "drive", "shoot", "run"]
+		"actions": ["drive", "shoot", "attack", "drive", "shoot", "attack"]
 	},
 	{
 		"title": "Mission: Impossible",
@@ -30,7 +30,7 @@ const MOVIES = [
 	{
 		"title": "Saturday Night Fever",
 		"hints": ["Category: Dance Drama", "A 1977 film starring John Travolta as a Brooklyn disco dancer.", "The hero dreams of winning a local dance contest."],
-		"actions": ["dance", "dance", "run", "dance"]
+		"actions": ["dance", "dance", "dance", "dance"]
 	},
 	{
 		"title": "John Wick",

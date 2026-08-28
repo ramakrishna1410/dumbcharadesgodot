@@ -3,6 +3,7 @@ extends Node3D
 @onready var animation_player: AnimationPlayer = $Blake/AnimationPlayer
 
 var movie_title_label: Label
+var title_blanks_label: Label
 var action_label: Label
 var hint_label: Label
 var hint_button: Button
@@ -125,6 +126,10 @@ func create_interface() -> void:
 	movie_title_label.add_theme_font_size_override("font_size", 22)
 	panel.add_child(movie_title_label)
 
+	title_blanks_label = Label.new()
+	title_blanks_label.add_theme_font_size_override("font_size", 22)
+	panel.add_child(title_blanks_label)
+
 	timer_label = Label.new()
 	panel.add_child(timer_label)
 
@@ -181,6 +186,7 @@ func start_round() -> void:
 	hints_revealed = 0
 
 	movie_title_label.text = "Movie: ???"
+	title_blanks_label.text = build_title_blanks(str(secret_movie["title"]))
 	action_label.text = "Watch carefully, then type the movie title!"
 	hint_label.text = ""
 	hint_button.disabled = false
@@ -202,7 +208,7 @@ func submit_answer() -> void:
 		or text_similarity(player_answer, correct_answer) >= MATCH_SIMILARITY_THRESHOLD
 
 	if is_match:
-		score += max(4 - hints_revealed, 1)
+		score += max(5 - hints_revealed, 1)
 		round_answered = true
 		round_running = false
 		action_label.text = "Correct!"
@@ -270,15 +276,45 @@ func finish_round(delay_seconds: float) -> void:
 
 func reveal_hint() -> void:
 	var hints: Array = secret_movie["hints"]
+	var total_hints := hints.size() + 1 # + the derived first-letters hint
 
-	if hints_revealed >= hints.size():
+	if hints_revealed >= total_hints:
 		return
 
-	hint_label.text += ("\n" if hint_label.text != "" else "") + str(hints[hints_revealed])
+	var hint_text: String
+
+	if hints_revealed < hints.size():
+		hint_text = str(hints[hints_revealed])
+	else:
+		hint_text = "First letters: " + build_first_letters(str(secret_movie["title"]))
+
+	hint_label.text += ("\n" if hint_label.text != "" else "") + hint_text
 	hints_revealed += 1
 
-	if hints_revealed >= hints.size():
+	if hints_revealed >= total_hints:
 		hint_button.disabled = true
+
+# Replaces each letter with "_" while leaving spaces/punctuation as-is, e.g.
+# "Mad Max: Fury Road" -> "___ ___: ____ ____". Shown for free so players get
+# the word-count/word-length signal real charades gives up front.
+func build_title_blanks(title: String) -> String:
+	var blanks := ""
+
+	for i in range(title.length()):
+		var current_char := title[i]
+		blanks += "_" if current_char.to_upper() != current_char.to_lower() else current_char
+
+	return blanks
+
+# Joins each word's first letter, e.g. "Mad Max: Fury Road" -> "M M F R".
+func build_first_letters(title: String) -> String:
+	var letters: Array[String] = []
+
+	for word in title.split(" ", false):
+		if word.length() > 0:
+			letters.append(word[0].to_upper())
+
+	return " ".join(letters)
 
 func reveal_answer() -> void:
 	if round_answered:
